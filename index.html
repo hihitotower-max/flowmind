@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowMind — Smart Traffic Simulator</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#0d1b2d;--panel2:#102238;--line:#20364d;--text:#e9f4ff;--muted:#8fa7bf;--cyan:#45d9f5;--green:#45e0a0;--yellow:#ffca64;--red:#ff647c}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 15% 0%,#102943 0%,var(--bg) 48%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);min-height:100vh}
+.app{max-width:1500px;margin:auto;padding:22px}
+header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#5be7ff,#1689b5);display:grid;place-items:center;color:#061522;font-size:25px;font-weight:900;box-shadow:0 8px 26px #20c7e333}
+h1{font-size:clamp(22px,3vw,32px);letter-spacing:-1px;margin:0}
+.subtitle{color:var(--muted);font-size:13px;margin-top:4px}
+.status-pill{border:1px solid #24425b;background:#0c2033;border-radius:99px;padding:9px 13px;display:flex;align-items:center;gap:8px;color:#bad0e4;font-size:12px;font-weight:700;letter-spacing:.6px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#60758a}
+.status-dot.live{background:var(--green);box-shadow:0 0 12px #45e0a0aa}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,.8fr);gap:18px;align-items:start}
+.panel{background:linear-gradient(155deg,#0e1d30ee,#0a1727f5);border:1px solid var(--line);border-radius:20px;box-shadow:0 16px 40px #0000001c;overflow:hidden}
+.panel-head{padding:17px 19px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.panel-title{font-size:14px;font-weight:800;letter-spacing:.2px}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:800}
+.canvas-wrap{padding:12px;background:#081522}
+#scene{display:block;width:100%;height:auto;border-radius:12px;background:#101e2a}
+.scene-foot{display:flex;justify-content:space-between;gap:12px;padding:12px 17px;color:var(--muted);font-size:11px;flex-wrap:wrap}
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.controls{padding:17px;display:grid;gap:17px}
+.control-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.control-label{font-size:12px;color:#c5d8e9;font-weight:700}
+.control-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.button-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+button{font:inherit;cursor:pointer;border:1px solid #2b4862;border-radius:11px;padding:11px 13px;color:var(--text);background:#132840;font-weight:800;font-size:12px;transition:transform .15s,border-color .15s,background .15s}
+button:hover{border-color:#4b789c;background:#19334e}
+button:active{transform:scale(.98)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+button.primary{background:linear-gradient(135deg,#45d9f5,#38b9dd);border-color:transparent;color:#051722}
+button.primary:hover{background:linear-gradient(135deg,#70e8fb,#4dc8e9)}
+button.wide{grid-column:1/-1}
+.segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;background:#081522;padding:5px;border:1px solid #1b3249;border-radius:12px}
+.segmented button{padding:9px 5px;background:transparent;border-color:transparent;color:#8fa7bf;font-size:11px}
+.segmented button.active{background:#1b3a53;color:#72e6fb;border-color:#2a5c78}
+    .mode-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .mode-row button.active{background:#173e46;color:#70e8c0;border-color:#2c8b83}
+    .mode-explain{font-size:11px;line-height:1.5;color:var(--muted)}
+.divider{height:1px;background:var(--line)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#0a1726;border:1px solid #1c3046;border-radius:13px;padding:13px}
+.stat .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:800}
+.stat .value{font-size:25px;font-weight:850;letter-spacing:-.7px;margin-top:6px;font-variant-numeric:tabular-nums}
+.stat .unit{font-size:11px;color:var(--muted);font-weight:600}
+.stat.accent .value{color:var(--cyan)}
+.queue-list{display:grid;gap:9px}
+.queue-row{display:grid;grid-template-columns:22px 1fr 35px;gap:10px;align-items:center}
+.arrow{width:22px;height:22px;border-radius:7px;background:#17334a;color:#70dff3;display:grid;place-items:center;font-size:13px;font-weight:900}
+.queue-name{font-size:12px;font-weight:700}
+.queue-bar{height:5px;background:#192c40;border-radius:99px;overflow:hidden;margin-top:6px}
+.queue-fill{height:100%;width:0;background:linear-gradient(90deg,#3abedb,#6de7fa);border-radius:99px;transition:width .18s}
+.queue-number{text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.phase-card{background:#091726;border:1px solid #1d344b;border-radius:13px;padding:13px}
+.phase-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.phase-name{font-size:13px;font-weight:800}
+.phase-timer{font-size:20px;font-weight:900;color:var(--cyan);font-variant-numeric:tabular-nums}
+.phase-track{height:5px;background:#1c3044;border-radius:99px;overflow:hidden;margin-top:10px}
+.phase-progress{height:100%;width:0;background:var(--cyan);border-radius:99px}
+.note{font-size:11px;line-height:1.6;color:var(--muted)}
+footer{margin-top:17px;padding:0 3px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#718aa2;font-size:11px}
+kbd{font:inherit;color:#a9c0d5;background:#12283b;border:1px solid #29445b;padding:2px 5px;border-radius:5px}
+@media(max-width:920px){.layout{grid-template-columns:1fr}.side-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.side-grid .panel{height:fit-content}}
+@media(max-width:600px){.app{padding:12px}.side-grid{grid-template-columns:1fr}.panel-head{padding:14px}.controls{padding:14px}.stat .value{font-size:22px}.status-pill{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">F</div>
+      <div>
+        <h1>FlowMind <span style="color:#53dff7">/</span> Traffic Simulator</h1>
+        <div class="subtitle">Adaptive signal control · Four-way intersection lab · Offline prototype</div>
+      </div>
+    </div>
+    <div class="status-pill"><span id="statusDot" class="status-dot"></span><span id="runStatus">READY TO START</span></div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <div><div class="eyebrow">Live simulation</div><div class="panel-title" style="margin-top:5px">Junction FM-01 · Four-way control</div></div>
+        <div class="eyebrow" id="clockLabel">00:00 SIM TIME</div>
+      </div>
+      <div class="canvas-wrap"><canvas id="scene" width="900" height="650" aria-label="Animated top-down four-way traffic intersection"></canvas></div>
+      <div class="scene-foot">
+        <div class="legend">
+          <span><i style="background:#ff657a"></i>Red · Stop</span>
+          <span><i style="background:#ffc65c"></i>Yellow · Clear</span>
+          <span><i style="background:#4be0a0"></i>Green · Go</span>
+        </div>
+        <span>Simulation only · Not connected to real roads</span>
+      </div>
+    </section>
+
+    <aside class="side-grid" style="display:grid;gap:18px">
+      <section class="panel">
+        <div class="panel-head"><div class="panel-title">Simulation controls</div><span class="eyebrow">CONTROL</span></div>
+        <div class="controls">
+          <div class="button-row">
+            <button id="startBtn" class="primary">▶ &nbsp; START</button>
+            <button id="pauseBtn">Ⅱ &nbsp; PAUSE</button>
+            <button id="resetBtn" class="wide">↻ &nbsp; RESET SIMULATION</button>
+          </div>
+          <div class="divider"></div>
+          <div>
+            <div class="control-row"><span class="control-label">Traffic density</span><span id="densityValue" class="eyebrow">MEDIUM</span></div>
+            <div class="control-hint" style="margin-bottom:10px">Controls how frequently new vehicles arrive.</div>
+            <div class="segmented" role="group" aria-label="Traffic density">
+              <button data-density="low">LOW</button><button data-density="medium" class="active">MEDIUM</button><button data-density="high">HIGH</button>
+            </div>
+          </div>
+          <div>
+            <div class="control-label" style="margin-bottom:9px">Signal control mode</div>
+            <div class="mode-row" role="group" aria-label="Signal control mode">
+              <button data-mode="fixed" class="active">FIXED-TIME</button>
+              <button data-mode="adaptive">ADAPTIVE</button>
+            </div>
+            <div id="modeExplain" class="mode-explain" style="margin-top:8px">Fixed-time baseline: green phases use the same duration.</div>
+          </div>
+          <div class="phase-card">
+            <div class="phase-top"><div><div class="eyebrow">Active signal phase</div><div id="phaseName" class="phase-name" style="margin-top:5px">North + South · Green</div></div><div id="phaseTimer" class="phase-timer">18.0s</div></div>
+            <div class="phase-track"><div id="phaseProgress" class="phase-progress"></div></div>
+          </div>
+          <div class="note"><strong style="color:#c8dbea">What makes it adaptive?</strong><br>At the start of each green phase, the controller counts queued vehicles on that axis and assigns 8–28 seconds of green. Fixed-time mode is the baseline. Compare both modes using the same traffic density and reset between trials. This is a rule-based simulation—not a trained AI model or a real-road controller.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><div class="panel-title">Live performance</div><span class="eyebrow">REAL-TIME</span></div>
+        <div class="controls">
+          <div class="stat-grid">
+            <div class="stat accent"><div class="label">Vehicles spawned</div><div id="spawnedStat" class="value">0</div><div class="unit">total arrivals</div></div>
+            <div class="stat"><div class="label">Vehicles served</div><div id="servedStat" class="value">0</div><div class="unit">exited junction</div></div>
+            <div class="stat"><div class="label">On road</div><div id="activeStat" class="value">0</div><div class="unit">active vehicles</div></div>
+            <div class="stat"><div class="label">Average wait</div><div id="avgWaitStat" class="value">0.0<span class="unit"> s</span></div><div class="unit">served vehicles only</div></div>
+            <div class="stat"><div class="label">Elapsed time</div><div id="elapsedStat" class="value">0<span class="unit"> s</span></div><div class="unit">simulation seconds</div></div>
+            <div class="stat"><div class="label">Throughput</div><div id="throughputStat" class="value">0.0</div><div class="unit">vehicles / simulated min</div></div>
+          </div>
+          <div>
+            <div class="control-row" style="margin-bottom:13px"><span class="control-label">Current queue by approach</span><span class="eyebrow">VEHICLES</span></div>
+            <div class="queue-list">
+              <div class="queue-row"><span class="arrow">↓</span><div><div class="queue-name">North</div><div class="queue-bar"><div id="barN" class="queue-fill"></div></div></div><span id="queueN" class="queue-number">0</span></div>
+              <div class="queue-row"><span class="arrow">↑</span><div><div class="queue-name">South</div><div class="queue-bar"><div id="barS" class="queue-fill"></div></div></div><span id="queueS" class="queue-number">0</span></div>
+              <div class="queue-row"><span class="arrow">→</span><div><div class="queue-name">West</div><div class="queue-bar"><div id="barW" class="queue-fill"></div></div></div><span id="queueW" class="queue-number">0</span></div>
+              <div class="queue-row"><span class="arrow">←</span><div><div class="queue-name">East</div><div class="queue-bar"><div id="barE" class="queue-fill"></div></div></div><span id="queueE" class="queue-number">0</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
+  <footer><span>FLOWMIND · OFFLINE DIGITAL PROTOTYPE · RULE-BASED ADAPTIVE CONTROL</span><span>Experiment: run each mode at the same density, reset, then compare served vehicles and average wait.</span></footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height, CX = W / 2, CY = H / 2;
+  const ROAD_HALF = 94;
+  const CAR_LENGTH = 31, CAR_WIDTH = 16, GAP = 11;
+  const directions = {
+    N: {name:'North', arrow:'↓', dx:0, dy:1, x:CX-27, y0:-42, stop:CY-ROAD_HALF-CAR_LENGTH/2, exit:H+45, axis:'NS', color:'#4bd5f2'},
+    S: {name:'South', arrow:'↑', dx:0, dy:-1, x:CX+27, y0:H+42, stop:CY+ROAD_HALF+CAR_LENGTH/2, exit:-45, axis:'NS', color:'#a98bff'},
+    W: {name:'West', arrow:'→', dx:1, dy:0, x0:-42, y:CY+27, stop:CX-ROAD_HALF-CAR_LENGTH/2, exit:W+45, axis:'EW', color:'#ffbd66'},
+    E: {name:'East', arrow:'←', dx:-1, dy:0, x0:W+42, y:CY-27, stop:CX+ROAD_HALF+CAR_LENGTH/2, exit:-45, axis:'EW', color:'#70e0a6'}
+  };
+  const densitySettings = {low:{interval:3.2,label:'LOW'},medium:{interval:1.9,label:'MEDIUM'},high:{interval:1.1,label:'HIGH'}};
+  let density = 'medium';
+  let controlMode = 'fixed';
+  let totalWaitAtService = 0;
+  let running = false;
+  let started = false;
+  let lastFrame = 0;
+  let simTime = 0;
+  let vehicles = [];
+  let totalSpawned = 0;
+  let totalServed = 0;
+  let nextVehicleId = 1;
+  let spawnTimers = {N:.4,S:1.2,E:.8,W:1.7};
+  let phaseIndex = 0;
+  let phaseElapsed = 0;
+  let pausedLabel = false;
+
+  // Signal cycle: each conflicting axis is separated by yellow and all-red clearance.
+  const phases = [
+    {name:'North + South · Green', axis:'NS', color:'green', duration:18},
+    {name:'North + South · Yellow', axis:'NS', color:'yellow', duration:3},
+    {name:'All-red clearance', axis:'NONE', color:'red', duration:1.2},
+    {name:'East + West · Green', axis:'EW', color:'green', duration:18},
+    {name:'East + West · Yellow', axis:'EW', color:'yellow', duration:3},
+    {name:'All-red clearance', axis:'NONE', color:'red', duration:1.2}
+  ];
+  const carPalette = ['#54d6f2','#f3b65f','#9a8bff','#5fe0a1','#ff788d','#e6edf6','#4f9dff'];
+
+  function phase(){ return phases[phaseIndex]; }
+  function axisDemand(axis) {
+    return Object.keys(directions).filter(dir => directions[dir].axis === axis)
+      .reduce((sum, dir) => sum + queueCount(dir), 0);
+  }
+  function greenDuration(axis) {
+    if (controlMode === 'fixed') return 18;
+    // Queue-responsive rule: 8-second minimum, 28-second maximum.
+    const demand = axisDemand(axis);
+    return Math.max(8, Math.min(28, 8 + demand * 2.5));
+  }
+  function setPhaseDuration() {
+    const p = phase();
+    if (p.color === 'green') p.duration = greenDuration(p.axis);
+  }
+  function signalFor(dir) {
+    const p = phase();
+    if (p.axis === 'NONE') return 'red';
+    if (directions[dir].axis !== p.axis) return 'red';
+    return p.color;
+  }
+  function formatTime(seconds) {
+    const s = Math.floor(seconds);
+    const m = Math.floor(s / 60);
+    return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+  }
+  function position(v) {
+    const d = directions[v.dir];
+    if (v.dir === 'N') return {x:d.x, y:d.y0 + v.p};
+    if (v.dir === 'S') return {x:d.x, y:d.y0 - v.p};
+    if (v.dir === 'W') return {x:d.x0 + v.p, y:d.y};
+    return {x:d.x0 - v.p, y:d.y};
+  }
+  function stopProgress(dir) {
+    const d = directions[dir];
+    if (dir === 'N') return d.stop - d.y0;
+    if (dir === 'S') return d.y0 - d.stop;
+    if (dir === 'W') return d.stop - d.x0;
+    return d.x0 - d.stop;
+  }
+  function exitProgress(dir) {
+    const d = directions[dir];
+    if (dir === 'N') return d.exit - d.y0;
+    if (dir === 'S') return d.y0 - d.exit;
+    if (dir === 'W') return d.exit - d.x0;
+    return d.x0 - d.exit;
+  }
+  function spawnVehicle(dir) {
+    // Avoid spawning into a vehicle already near the approach entrance.
+    const same = vehicles.filter(v => v.dir === dir);
+    if (same.some(v => v.p < CAR_LENGTH + GAP + 15)) return false;
+    const d = directions[dir];
+    vehicles.push({
+      id:nextVehicleId++, dir, p:0, speed:0, maxSpeed:82 + Math.random()*15,
+      color:carPalette[Math.floor(Math.random()*carPalette.length)],
+      born:simTime, stopped:false, wasInJunction:false, waitSeconds:0
+    });
+    totalSpawned++;
+    return true;
+  }
+  function canMove(v, dt) {
+    const stopP = stopProgress(v.dir);
+    const sig = signalFor(v.dir);
+    let target = Infinity;
+    if (sig !== 'green' && v.p < stopP) target = stopP;
+    // Find the nearest vehicle ahead in this lane and maintain a safe gap.
+    let nearestAhead = Infinity;
+    for (const other of vehicles) {
+      if (other === v || other.dir !== v.dir || other.p <= v.p) continue;
+      nearestAhead = Math.min(nearestAhead, other.p - CAR_LENGTH - GAP);
+    }
+    target = Math.min(target, nearestAhead);
+    const desired = target === Infinity ? v.maxSpeed : Math.max(0, Math.min(v.maxSpeed, (target - v.p) * 3.2));
+    v.speed += (desired - v.speed) * Math.min(1, dt * 4.8);
+    if (target !== Infinity && target - v.p < 1.2) { v.p = Math.min(v.p, target); v.speed = 0; }
+    v.stopped = v.speed < 3;
+    if (v.stopped && v.p < stopP + 8) v.waitSeconds += dt;
+  }
+
+  function updateSpawning(dt) {
+    const interval = densitySettings[density].interval;
+    for (const dir of Object.keys(directions)) {
+      spawnTimers[dir] -= dt;
+      if (spawnTimers[dir] <= 0) {
+        if (spawnVehicle(dir)) {
+          // Small independent variation prevents perfectly synchronized arrivals.
+          spawnTimers[dir] = interval * (0.72 + Math.random()*0.62);
+        } else {
+          spawnTimers[dir] = .25;
+        }
+      }
+    }
+  }
+  function updateSignals(dt) {
+    phaseElapsed += dt;
+    while (phaseElapsed >= phase().duration) {
+      phaseElapsed -= phase().duration;
+      phaseIndex = (phaseIndex + 1) % phases.length;
+      setPhaseDuration();
+    }
+  }
+  function updateVehicles(dt) {
+    // Process front-most vehicles first so following cars react to current positions.
+    vehicles.sort((a,b) => b.p-a.p);
+    for (const v of vehicles) {
+      const oldP = v.p;
+      canMove(v,dt);
+      v.p += v.speed * dt;
+      const stopP = stopProgress(v.dir);
+      const sig = signalFor(v.dir);
+      // Clamp any attempted red/yellow entry to the stop line.
+      if (sig !== 'green' && oldP < stopP && v.p > stopP) { v.p = stopP; v.speed = 0; v.stopped = true; }
+      if (oldP < stopP && v.p >= stopP && sig !== 'green') { v.p = stopP; v.speed = 0; }
+      if (v.p > stopP + 4) v.wasInJunction = true;
+    }
+    const before = vehicles.length;
+    vehicles = vehicles.filter(v => {
+      if (v.p >= exitProgress(v.dir)) { totalServed++; totalWaitAtService += v.waitSeconds; return false; }
+      return true;
+    });
+    return before - vehicles.length;
+  }
+  function queueCount(dir) {
+    const sp = stopProgress(dir);
+    return vehicles.filter(v => v.dir === dir && v.p < sp + 8 && (v.speed < 18 || signalFor(dir) !== 'green')).length;
+  }
+
+  function roundedRect(c,x,y,w,h,r) {
+    c.beginPath(); c.roundRect(x,y,w,h,r);
+  }
+  function drawRoads() {
+    // A more polished miniature city block around the junction.
+    ctx.fillStyle = '#102b31'; ctx.fillRect(0,0,W,H);
+    // Soft vignette gives the road scene depth without reducing contrast.
+    const vignette = ctx.createRadialGradient(CX,CY,70,CX,CY,590);
+    vignette.addColorStop(0,'#173039'); vignette.addColorStop(1,'#0b2028');
+    ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
+
+    // Sidewalks / concrete corners.
+    ctx.fillStyle='#35434a';
+    ctx.fillRect(CX-ROAD_HALF-17,0,ROAD_HALF*2+34,H);
+    ctx.fillRect(0,CY-ROAD_HALF-17,W,ROAD_HALF*2+34);
+    // Green verges in each corner.
+    const corners=[
+      [0,0,CX-ROAD_HALF-18,CY-ROAD_HALF-18],
+      [CX+ROAD_HALF+18,0,W-(CX+ROAD_HALF+18),CY-ROAD_HALF-18],
+      [0,CY+ROAD_HALF+18,CX-ROAD_HALF-18,H-(CY+ROAD_HALF+18)],
+      [CX+ROAD_HALF+18,CY+ROAD_HALF+18,W-(CX+ROAD_HALF+18),H-(CY+ROAD_HALF+18)]
+    ];
+    for(const [x,y,w,h] of corners){
+      ctx.fillStyle='#173b37';ctx.fillRect(x,y,w,h);
+      // Subtle grass / paving pattern.
+      ctx.strokeStyle='#245049';ctx.lineWidth=1;
+      for(let yy=y+12;yy<y+h;yy+=24){ctx.beginPath();ctx.moveTo(x+8,yy);ctx.lineTo(x+w-8,yy);ctx.stroke();}
+      for(let xx=x+12;xx<x+w;xx+=28){ctx.beginPath();ctx.moveTo(xx,y+8);ctx.lineTo(xx,y+h-8);ctx.stroke();}
+    }
+    // Small city buildings, set back from the road.
+    function building(x,y,w,h,accent){
+      ctx.fillStyle='#07182055';roundedRect(ctx,x+4,y+5,w,h,7);ctx.fill();
+      ctx.fillStyle='#203c46';roundedRect(ctx,x,y,w,h,7);ctx.fill();
+      ctx.strokeStyle='#42616a';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=accent;ctx.globalAlpha=.75;roundedRect(ctx,x+7,y+7,w-14,5,2);ctx.fill();ctx.globalAlpha=1;
+      ctx.fillStyle='#2e5962';
+      const cols=Math.max(1,Math.floor((w-18)/16));
+      for(let i=0;i<cols;i++){
+        ctx.fillRect(x+9+i*16,y+19,8,7);
+        if(h>55)ctx.fillRect(x+9+i*16,y+33,8,7);
+      }
+    }
+    building(22,24,100,65,'#48c9d9');
+    building(W-127,25,103,76,'#8c9cff');
+    building(22,H-111,112,83,'#5acda0');
+    building(W-143,H-113,119,85,'#f0b76a');
+
+    // Landscaped trees and circular planters.
+    function tree(x,y,r=10){
+      ctx.fillStyle='#0b2525';ctx.beginPath();ctx.ellipse(x+2,y+4,r+3,r*.72,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#755d43';ctx.fillRect(x-2,y+1,4,9);
+      ctx.fillStyle='#276e59';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#3a9a73';ctx.beginPath();ctx.arc(x-3,y-3,r*.56,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#72c99a';ctx.beginPath();ctx.arc(x-4,y-5,2,0,Math.PI*2);ctx.fill();
+    }
+    [[153,38],[204,97],[W-168,43],[W-205,105],[151,H-45],[202,H-97],[W-175,H-43],[W-220,H-96],[34,145],[W-37,145]].forEach(p=>tree(p[0],p[1],9));
+
+    // Main asphalt carriageways with subtle surface texture.
+    ctx.fillStyle='#252f39';ctx.fillRect(CX-ROAD_HALF,0,ROAD_HALF*2,H);ctx.fillRect(0,CY-ROAD_HALF,W,ROAD_HALF*2);
+    ctx.fillStyle='#2b3640';ctx.fillRect(CX-ROAD_HALF+5,0,ROAD_HALF*2-10,H);ctx.fillRect(0,CY-ROAD_HALF+5,W,ROAD_HALF*2-10);
+    // Asphalt speckles kept very subtle.
+    ctx.fillStyle='#3b4650';
+    for(let i=0;i<95;i++){
+      const x=(i*97+31)%W, y=(i*61+19)%H;
+      if((x>CX-ROAD_HALF+8&&x<CX+ROAD_HALF-8)||(y>CY-ROAD_HALF+8&&y<CY+ROAD_HALF-8))ctx.fillRect(x,y,2,2);
+    }
+    // Road edges and inner shoulders.
+    ctx.strokeStyle='#71808a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(CX-ROAD_HALF,0);ctx.lineTo(CX-ROAD_HALF,H);ctx.moveTo(CX+ROAD_HALF,0);ctx.lineTo(CX+ROAD_HALF,H);
+    ctx.moveTo(0,CY-ROAD_HALF);ctx.lineTo(W,CY-ROAD_HALF);ctx.moveTo(0,CY+ROAD_HALF);ctx.lineTo(W,CY+ROAD_HALF);ctx.stroke();
+    ctx.strokeStyle='#4b5963';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(CX-ROAD_HALF+6,0);ctx.lineTo(CX-ROAD_HALF+6,H);ctx.moveTo(CX+ROAD_HALF-6,0);ctx.lineTo(CX+ROAD_HALF-6,H);
+    ctx.moveTo(0,CY-ROAD_HALF+6);ctx.lineTo(W,CY-ROAD_HALF+6);ctx.moveTo(0,CY+ROAD_HALF-6);ctx.lineTo(W,CY+ROAD_HALF-6);ctx.stroke();
+
+    // Broken lane divider segments stop before the conflict area.
+    ctx.strokeStyle='#b4bdc2';ctx.lineWidth=2;ctx.setLineDash([17,16]);
+    ctx.beginPath();
+    ctx.moveTo(CX,0);ctx.lineTo(CX,CY-ROAD_HALF-7);ctx.moveTo(CX,CY+ROAD_HALF+7);ctx.lineTo(CX,H);
+    ctx.moveTo(0,CY);ctx.lineTo(CX-ROAD_HALF-7,CY);ctx.moveTo(CX+ROAD_HALF+7,CY);ctx.lineTo(W,CY);
+    ctx.stroke();ctx.setLineDash([]);
+
+    // Compact directional arrows painted into each approach.
+    drawArrow(CX-27,108,0,1,'#aab7be');drawArrow(CX+27,H-108,0,-1,'#aab7be');
+    drawArrow(112,CY+27,1,0,'#aab7be');drawArrow(W-112,CY-27,-1,0,'#aab7be');
+
+    // Crosswalks: zebra stripes sit outside the junction conflict box.
+    ctx.fillStyle='#e0e6e8';ctx.globalAlpha=.9;
+    for(let i=0;i<8;i++){
+      const offset=-66+i*18;
+      ctx.fillRect(CX+offset,CY-ROAD_HALF+7,10,19);
+      ctx.fillRect(CX+offset,CY+ROAD_HALF-26,10,19);
+      ctx.fillRect(CX-ROAD_HALF+7,CY+offset,19,10);
+      ctx.fillRect(CX+ROAD_HALF-26,CY+offset,19,10);
+    }
+    ctx.globalAlpha=1;
+    // Bold stop bars aligned with the approaches.
+    ctx.fillStyle='#f0f4f5';
+    ctx.fillRect(CX-ROAD_HALF+2,CY-ROAD_HALF-3,ROAD_HALF*2-4,4);
+    ctx.fillRect(CX-ROAD_HALF+2,CY+ROAD_HALF-1,ROAD_HALF*2-4,4);
+    ctx.fillRect(CX-ROAD_HALF-3,CY-ROAD_HALF+2,4,ROAD_HALF*2-4);
+    ctx.fillRect(CX+ROAD_HALF-1,CY-ROAD_HALF+2,4,ROAD_HALF*2-4);
+
+    // Junction box with restrained guide marks, not a distracting X.
+    ctx.fillStyle='#202b35';ctx.fillRect(CX-ROAD_HALF+2,CY-ROAD_HALF+2,ROAD_HALF*2-4,ROAD_HALF*2-4);
+    ctx.strokeStyle='#52616c';ctx.lineWidth=1;ctx.setLineDash([5,8]);
+    ctx.beginPath();ctx.moveTo(CX-ROAD_HALF+13,CY);ctx.lineTo(CX+ROAD_HALF-13,CY);ctx.moveTo(CX,CY-ROAD_HALF+13);ctx.lineTo(CX,CY+ROAD_HALF-13);ctx.stroke();ctx.setLineDash([]);
+    // A subtle center island marker.
+    ctx.fillStyle='#3d4a53';ctx.beginPath();ctx.arc(CX,CY,12,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#6c7b83';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(CX,CY,12,0,Math.PI*2);ctx.stroke();
+
+    // Direction labels sit on the verge, clear of vehicles.
+    ctx.font='800 11px system-ui';ctx.fillStyle='#c0d1d5';ctx.textAlign='center';ctx.letterSpacing='1px';
+    ctx.fillText('NORTH',CX-27,18);ctx.fillText('SOUTH',CX+27,H-12);
+    ctx.fillText('WEST',27,CY+27);ctx.fillText('EAST',W-28,CY-27);ctx.letterSpacing='0px';
+  }
+  function drawArrow(x,y,dx,dy,color){
+    ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(dy,dx));ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(-9,0);ctx.lineTo(9,0);ctx.moveTo(3,-6);ctx.lineTo(9,0);ctx.lineTo(3,6);ctx.stroke();ctx.restore();
+  }
+  function drawSignals() {
+    const positions = {
+      N:{x:CX-74,y:CY-ROAD_HALF-54,rot:0,dir:'N'},
+      S:{x:CX+74,y:CY+ROAD_HALF+54,rot:Math.PI,dir:'S'},
+      W:{x:CX-ROAD_HALF-54,y:CY+74,rot:Math.PI/2,dir:'W'},
+      E:{x:CX+ROAD_HALF+54,y:CY-74,rot:-Math.PI/2,dir:'E'}
+    };
+    for(const [key,p] of Object.entries(positions)){
+      const sig=signalFor(p.dir);
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.fillStyle='#0a111a';ctx.strokeStyle='#4d5d68';ctx.lineWidth=1.5;
+      roundedRect(ctx,-13,-29,26,58,8);ctx.fill();ctx.stroke();
+      const lamps=[['red','#ff536b'],['yellow','#ffc65c'],['green','#43e19c']];
+      lamps.forEach(([name,col],i)=>{
+        ctx.beginPath();ctx.arc(0,-18+i*18,5.5,0,Math.PI*2);
+        if(sig===name){ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=13;}else{ctx.fillStyle='#293640';ctx.shadowBlur=0;}
+        ctx.fill();ctx.shadowBlur=0;
+      });
+      ctx.restore();
+    }
+  }
+  function drawVehicles() {
+    for(const v of vehicles){
+      const p=position(v);
+      ctx.save();ctx.translate(p.x,p.y);
+      let angle=0;
+      if(v.dir==='N')angle=Math.PI/2;
+      if(v.dir==='S')angle=-Math.PI/2;
+      if(v.dir==='E')angle=Math.PI;
+      ctx.rotate(angle);
+      // shadow
+      ctx.fillStyle='#0007';roundedRect(ctx,-CAR_LENGTH/2+2,-CAR_WIDTH/2+3,CAR_LENGTH,CAR_WIDTH,5);ctx.fill();
+      ctx.fillStyle=v.color;roundedRect(ctx,-CAR_LENGTH/2,-CAR_WIDTH/2,CAR_LENGTH,CAR_WIDTH,5);ctx.fill();
+      ctx.fillStyle='#14283a';roundedRect(ctx,-CAR_LENGTH/2+3,-CAR_WIDTH/2+2,10,CAR_WIDTH-4,3);ctx.fill();
+      ctx.fillStyle='#9eeafa';roundedRect(ctx,2,-CAR_WIDTH/2+2,8,CAR_WIDTH-4,3);ctx.fill();
+      ctx.fillStyle='#fff3b8';ctx.fillRect(CAR_LENGTH/2-3,-CAR_WIDTH/2+2,2,3);ctx.fillRect(CAR_LENGTH/2-3,CAR_WIDTH/2-5,2,3);
+      ctx.fillStyle='#ff687a';ctx.fillRect(-CAR_LENGTH/2,-CAR_WIDTH/2+2,2,3);ctx.fillRect(-CAR_LENGTH/2,CAR_WIDTH/2-5,2,3);
+      ctx.restore();
+    }
+  }
+  function drawOverlay() {
+    // subtle center marker
+    ctx.fillStyle='#e5edf522';ctx.beginPath();ctx.arc(CX,CY,3,0,Math.PI*2);ctx.fill();
+    if(!started){
+      ctx.fillStyle='#06111dcc';roundedRect(ctx,CX-127,CY-27,254,54,14);ctx.fill();
+      ctx.strokeStyle='#3b5c70';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle='#d9edf7';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText('READY FOR SIMULATION',CX,CY+5);
+    } else if(!running){
+      ctx.fillStyle='#06111dcc';roundedRect(ctx,CX-73,CY-25,146,50,13);ctx.fill();
+      ctx.fillStyle='#d9edf7';ctx.font='800 14px system-ui';ctx.textAlign='center';ctx.fillText('SIMULATION PAUSED',CX,CY+5);
+    }
+  }
+  function render() {
+    ctx.clearRect(0,0,W,H);
+    drawRoads();drawSignals();drawVehicles();drawOverlay();
+  }
+  function updateUI() {
+    document.getElementById('runStatus').textContent = !started ? 'READY TO START' : running ? 'SIMULATION RUNNING' : 'SIMULATION PAUSED';
+    document.getElementById('statusDot').classList.toggle('live',running);
+    document.getElementById('clockLabel').textContent = formatTime(simTime) + ' SIM TIME';
+    document.getElementById('spawnedStat').textContent = totalSpawned;
+    document.getElementById('servedStat').textContent = totalServed;
+    document.getElementById('activeStat').textContent = vehicles.length;
+    document.getElementById('avgWaitStat').innerHTML = (totalServed ? (totalWaitAtService / totalServed).toFixed(1) : '0.0') + '<span class="unit"> s</span>'; 
+    document.getElementById('elapsedStat').innerHTML = Math.floor(simTime) + '<span class="unit"> s</span>';
+    document.getElementById('throughputStat').textContent = simTime > 0 ? (totalServed / simTime * 60).toFixed(1) : '0.0';
+    const p=phase();
+    document.getElementById('phaseName').textContent=p.name;
+    document.getElementById('phaseTimer').textContent=Math.max(0,p.duration-phaseElapsed).toFixed(1)+'s';
+    document.getElementById('phaseProgress').style.width=(phaseElapsed/p.duration*100)+'%';
+    for(const dir of Object.keys(directions)){
+      const q=queueCount(dir);
+      document.getElementById('queue'+dir).textContent=q;
+      document.getElementById('bar'+dir).style.width=Math.min(100,q/8*100)+'%';
+    }
+  }
+  function tick(timestamp) {
+    if(!running) return;
+    if(!lastFrame) lastFrame=timestamp;
+    const dt=Math.min((timestamp-lastFrame)/1000,.05);
+    lastFrame=timestamp;
+    simTime+=dt;
+    updateSignals(dt);
+    updateSpawning(dt);
+    updateVehicles(dt);
+    render();
+    updateUI();
+    requestAnimationFrame(tick);
+  }
+  function start() {
+    if(running) return;
+    running=true;started=true;lastFrame=0;
+    requestAnimationFrame(tick);
+    render();updateUI();
+  }
+  function pause() {
+    if(!running) return;
+    running=false;lastFrame=0;
+    render();updateUI();
+  }
+  function reset() {
+    running=false;started=false;lastFrame=0;simTime=0;vehicles=[];
+    totalSpawned=0;totalServed=0;nextVehicleId=1;
+    spawnTimers={N:.4,S:1.2,E:.8,W:1.7};
+    phaseIndex=0;phaseElapsed=0;totalWaitAtService=0;
+    phases[0].duration=18;phases[3].duration=18;
+    setPhaseDuration();
+    document.getElementById('pauseBtn').textContent='Ⅱ  PAUSE';
+    render();updateUI();
+  }
+  document.getElementById('startBtn').addEventListener('click',start);
+  document.getElementById('pauseBtn').addEventListener('click',()=>{
+    if(running){pause();document.getElementById('pauseBtn').textContent='▶  RESUME';}
+    else {start();document.getElementById('pauseBtn').textContent='Ⅱ  PAUSE';}
+  });
+  document.getElementById('resetBtn').addEventListener('click',reset);
+  document.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      controlMode = btn.dataset.mode;
+      document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('modeExplain').textContent = controlMode === 'adaptive'
+        ? 'Adaptive rule: estimated queue demand changes green duration (8–28 seconds); yellow and all-red intervals remain.'
+        : 'Fixed-time baseline: green phases use the same 18-second duration.';
+      phases[0].duration = 18; phases[3].duration = 18;
+      if (phase().color === 'green') setPhaseDuration();
+      updateUI(); render();
+    });
+  });
+  document.querySelectorAll('[data-density]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      density=btn.dataset.density;
+      document.querySelectorAll('[data-density]').forEach(b=>b.classList.toggle('active',b===btn));
+      document.getElementById('densityValue').textContent=densitySettings[density].label;
+    });
+  });
+  // Initial static render and UI state.
+  setPhaseDuration();render();updateUI();
+})();
+</script>
+</body>
+</html>
